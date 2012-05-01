@@ -37,6 +37,18 @@ class UploadHandler(pyinotify.ProcessEvent):
             else:
                 log.info("Keyname %s already exists, skipping upload" % keyname)
 
+    def process_IN_CLOSE_WRITE(self, event):
+        if event.pathname.find('commitlog') != -1:
+            keyname = '%s:%s' % (self.hostname, event.pathname)
+            key = self.bucket.get_key(keyname)
+            if key is None:
+                t = Thread(target=self.upload_sstable, args=(
+                           keyname, event.pathname))
+                t.setDaemon(True)
+                t.start()
+            else:
+                log.info("Keyname %s already exists, skipping upload" % keyname)
+
     def upload_sstable(self, keyname, filename, with_index=True):
         log.info('Uploading %s' % filename)
 
